@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from 'react';
 import VideoForm from '@/components/VideoForm';
 import TranscriptViewer from '@/components/TranscriptViewer';

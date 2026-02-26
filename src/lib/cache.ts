@@ -1,9 +1,9 @@
-import LRU from 'lru-cache';
+import { LRUCache } from "lru-cache";
 import { createClient, RedisClientType } from 'redis';
 
 // In-memory LRU cache as a default fallback. Stores up to 1000 entries with a
 // default TTL of one hour.
-const memoryCache = new LRU<string, any>({ max: 1000, ttl: 60 * 60 * 1000 });
+const memoryCache = new LRUCache<string, any>({ max: 1000, ttl: 60 * 60 * 1000 });
 
 let redisClient: RedisClientType | null = null;
 const redisUrl = process.env.REDIS_URL;

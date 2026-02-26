@@ -55,42 +55,70 @@ async function fetchTranscriptFromTimedtext(
   lang: string
 ): Promise<TranscriptEntry[]> {
   try {
-    const url = `https://www.youtube.com/api/timedtext?v=${encodeURIComponent(
+    const baseUrl = `https://www.youtube.com/api/timedtext?v=${encodeURIComponent(
       videoId
     )}&lang=${encodeURIComponent(lang)}&fmt=json3`;
-    const res = await fetch(url);
+
+    // 1️⃣ Try official captions first
+    let res = await fetch(baseUrl);
     if (!res.ok) {
       return [];
     }
-    const data = await res.json();
-    const events: any[] = data.events || [];
+
+    let data = await res.json();
+
+    // 2️⃣ If no events, retry with auto-generated captions (kind=asr)
+    if (!data?.events || data.events.length === 0) {
+      const asrRes = await fetch(`${baseUrl}&kind=asr`);
+      if (!asrRes.ok) {
+        return [];
+      }
+      data = await asrRes.json();
+    }
+
+    const events: any[] = data?.events || [];
     const transcript: TranscriptEntry[] = [];
+
     for (let i = 0; i < events.length; i++) {
       const ev = events[i];
       if (!ev.segs) continue;
+
       const text = (ev.segs as any[])
         .map((seg) => seg.utf8)
-        .join('')
-        .replace(/\n+/g, ' ')
+        .join("")
+        .replace(/\n+/g, " ")
         .trim();
+
       if (!text) continue;
-      const start = typeof ev.tStartMs === 'number' ? ev.tStartMs / 1000 : 0;
-      // If duration is not provided, estimate using the difference to the next event
+
+      const start =
+        typeof ev.tStartMs === "number" ? ev.tStartMs / 1000 : 0;
+
       let dur = 0;
-      if (typeof ev.dDurationMs === 'number') {
+      if (typeof ev.dDurationMs === "number") {
         dur = ev.dDurationMs / 1000;
-      } else if (i + 1 < events.length && typeof events[i + 1].tStartMs === 'number') {
+      } else if (
+        i + 1 < events.length &&
+        typeof events[i + 1].tStartMs === "number"
+      ) {
         dur = (events[i + 1].tStartMs - ev.tStartMs) / 1000;
       }
+
       const end = start + dur;
-      transcript.push({ start, end, text });
+
+      transcript.push({
+        start,
+        end,
+        text,
+      });
     }
+
     return transcript;
   } catch (err) {
+    console.error("Timedtext fetch failed:", err);
     return [];
   }
 }
-
 /**
  * Fetches basic video metadata via YouTube's oEmbed endpoint. This endpoint
  * returns JSON containing the video title, author and thumbnail URL and does

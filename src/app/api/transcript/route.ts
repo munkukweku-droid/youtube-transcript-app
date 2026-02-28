@@ -48,7 +48,9 @@ export async function POST(request: NextRequest) {
     }
     const data = await provider.getTranscript(videoId, lang);
     // Cache the result for one hour (3600 seconds).
-    await setCache(cacheKey, data, 60 * 60 * 1000);
+    if (data?.transcript?.length) {
+      await setCache(cacheKey, data, 60 * 60 * 1000);
+    }
     return NextResponse.json(data);
   } catch (err: any) {
     const message = err instanceof Error ? err.message : 'Unexpected error';
